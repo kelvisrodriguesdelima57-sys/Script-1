@@ -41,7 +41,7 @@
   class BlueTapy {
     constructor() {
       this.el = document.createElement("img");
-      this.el.src = "blue-tapy/mati1.png"; // sprite inicial
+      this.el.src = "Blue Tapy/mati1.png"; // sprite inicial
       this.el.style.position = "fixed";
       this.el.style.left = "100px";
       this.el.style.top = "100px";
@@ -51,26 +51,36 @@
       document.body.appendChild(this.el);
 
       this.frames = {
-        up: ["blue-tapy/up1.png", "blue-tapy/up2.png"],
-        down: ["blue-tapy/down1.png", "blue-tapy/down2.png"],
-        left: ["blue-tapy/left1.png", "blue-tapy/left2.png"],
-        right: ["blue-tapy/right1.png", "blue-tapy/right2.png"],
-        idle: ["blue-tapy/mati1.png", "blue-tapy/mati2.png"],
+        up: ["Blue Tapy/up1.png", "Blue Tapy/up2.png"],
+        down: ["Blue Tapy/down1.png", "Blue Tapy/down2.png"],
+        left: ["Blue Tapy/left1.png", "Blue Tapy/left2.png"],
+        right: ["Blue Tapy/right1.png", "Blue Tapy/right2.png"],
+        idle: ["Blue Tapy/mati1.png", "Blue Tapy/mati2.png"],
+        sleep: ["Blue Tapy/sleep1.png", "Blue Tapy/sleep2.png"],
+        awake: ["Blue Tapy/awake.png"],
+        yawn: ["Blue Tapy/akubi1.png", "Blue Tapy/akubi2.png"],
+        scratch: ["Blue Tapy/kaki1.png", "Blue Tapy/kaki2.png"]
       };
 
       this.frameIndex = 0;
       this.x = 100;
       this.y = 100;
-
       this.mouseX = window.innerWidth / 2;
       this.mouseY = window.innerHeight / 2;
+
+      this.state = "idle";  // idle, walk, sleep, awake, yawn, scratch
+      this.lastMove = Date.now();
 
       document.addEventListener("mousemove", e => {
         this.mouseX = e.clientX;
         this.mouseY = e.clientY;
+        this.lastMove = Date.now();
+        if (this.state === "sleep") {
+          this.state = "awake";
+        }
       });
 
-      setInterval(() => this.update(), 120);
+      setInterval(() => this.update(), 150);
     }
 
     update() {
@@ -78,16 +88,35 @@
       let dy = this.mouseY - this.y;
       let dir = "idle";
 
-      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-        if (Math.abs(dx) > Math.abs(dy)) {
-          dir = dx > 0 ? "right" : "left";
-          this.x += dx > 0 ? 5 : -5;
+      // se ficou parado mais de 10s -> dormir
+      if (Date.now() - this.lastMove > 10000) {
+        this.state = "sleep";
+      }
+
+      if (this.state === "awake") {
+        dir = "awake";
+        this.state = "idle";
+      } else if (this.state === "sleep") {
+        dir = "sleep";
+      } else {
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          if (Math.abs(dx) > Math.abs(dy)) {
+            dir = dx > 0 ? "right" : "left";
+            this.x += dx > 0 ? 5 : -5;
+          } else {
+            dir = dy > 0 ? "down" : "up";
+            this.y += dy > 0 ? 5 : -5;
+          }
         } else {
-          dir = dy > 0 ? "down" : "up";
-          this.y += dy > 0 ? 5 : -5;
+          // chance aleatória de bocejar ou coçar
+          let r = Math.random();
+          if (r < 0.01) dir = "yawn";
+          else if (r < 0.02) dir = "scratch";
+          else dir = "idle";
         }
       }
 
+      // troca de frame
       this.frameIndex = (this.frameIndex + 1) % this.frames[dir].length;
       this.el.src = this.frames[dir][this.frameIndex];
       this.el.style.left = this.x + "px";
