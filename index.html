@@ -1,131 +1,85 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Site de Respostas</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gerador de Token - Sala (demo)</title>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f4f9;
-      color: #333;
-      text-align: center;
-      padding: 50px;
-    }
-    h1 {
-      color: #0077cc;
-    }
-    .container {
-      max-width: 600px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
+    body{font-family:Arial,Helvetica,sans-serif;margin:24px}
+    input,textarea{width:100%;padding:8px;margin:6px 0}
+    button{padding:8px 12px;cursor:pointer}
+    pre{background:#f5f5f5;padding:12px;white-space:pre-wrap;word-break:break-word}
   </style>
 </head>
 <body>
+  <h1>Gerador e Validador de Token (Demo em HTML único)</h1>
 
-  <div class="container">
-    <h1>🐱 Site de Respostas</h1>
-    <p>Cole aqui sua questão e veja as respostas!</p>
-    <textarea rows="5" style="width:100%;"></textarea>
-    <br><br>
-    <button>Enviar</button>
-  </div>
+  <h2>Gerar token (admin)</h2>
+  <label>Senha admin: <input id="pass" type="password"></label>
+  <label>Room ID: <input id="room"></label>
+  <label>Candidate ID (opcional): <input id="cand"></label>
+  <button id="gen">Gerar token</button>
+  <h4>Resultado</h4>
+  <pre id="result">—</pre>
 
-  <!-- Script do Blue Tapy -->
+  <hr>
+  <h2>Validar token</h2>
+  <textarea id="tokenInput" rows="3"></textarea>
+  <button id="validate">Validar</button>
+  <pre id="validationResult">—</pre>
+
+  <!-- Biblioteca JWT em JS puro -->
+  <script src="https://cdn.jsdelivr.net/npm/jsrsasign"></script>
   <script>
-  class BlueTapy {
-    constructor() {
-      this.el = document.createElement("img");
-      this.el.src = "Blue Tapy/mati1.png"; // sprite inicial
-      this.el.style.position = "fixed";
-      this.el.style.left = "100px";
-      this.el.style.top = "100px";
-      this.el.style.width = "64px";
-      this.el.style.height = "64px";
-      this.el.style.pointerEvents = "none";
-      document.body.appendChild(this.el);
+  // Configurações (NÃO usar em produção)
+  const ADMIN_PASSWORD = "123456"; // altere
+  const JWT_SECRET = "segredo_super_forte"; // altere
+  const TOKEN_TTL_SECONDS = 900; // 15min
 
-      this.frames = {
-        up: ["Blue Tapy/up1.png", "Blue Tapy/up2.png"],
-        down: ["Blue Tapy/down1.png", "Blue Tapy/down2.png"],
-        left: ["Blue Tapy/left1.png", "Blue Tapy/left2.png"],
-        right: ["Blue Tapy/right1.png", "Blue Tapy/right2.png"],
-        idle: ["Blue Tapy/mati1.png", "Blue Tapy/mati2.png"],
-        sleep: ["Blue Tapy/sleep1.png", "Blue Tapy/sleep2.png"],
-        awake: ["Blue Tapy/awake.png"],
-        yawn: ["Blue Tapy/akubi1.png", "Blue Tapy/akubi2.png"],
-        scratch: ["Blue Tapy/kaki1.png", "Blue Tapy/kaki2.png"]
-      };
+  // Função para gerar JWT (HS256)
+  function generateJWT(payload, secret, ttlSec){
+    const header = {alg:"HS256",typ:"JWT"};
+    const now = Math.floor(Date.now()/1000);
+    const fullPayload = {...payload, iat: now, exp: now + ttlSec};
+    return KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(fullPayload), {utf8: secret});
+  }
 
-      this.frameIndex = 0;
-      this.x = 100;
-      this.y = 100;
-      this.mouseX = window.innerWidth / 2;
-      this.mouseY = window.innerHeight / 2;
-
-      this.state = "idle";  // idle, walk, sleep, awake, yawn, scratch
-      this.lastMove = Date.now();
-
-      document.addEventListener("mousemove", e => {
-        this.mouseX = e.clientX;
-        this.mouseY = e.clientY;
-        this.lastMove = Date.now();
-        if (this.state === "sleep") {
-          this.state = "awake";
-        }
-      });
-
-      setInterval(() => this.update(), 150);
-    }
-
-    update() {
-      let dx = this.mouseX - this.x;
-      let dy = this.mouseY - this.y;
-      let dir = "idle";
-
-      // se ficou parado mais de 10s -> dormir
-      if (Date.now() - this.lastMove > 10000) {
-        this.state = "sleep";
-      }
-
-      if (this.state === "awake") {
-        dir = "awake";
-        this.state = "idle";
-      } else if (this.state === "sleep") {
-        dir = "sleep";
-      } else {
-        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-          if (Math.abs(dx) > Math.abs(dy)) {
-            dir = dx > 0 ? "right" : "left";
-            this.x += dx > 0 ? 5 : -5;
-          } else {
-            dir = dy > 0 ? "down" : "up";
-            this.y += dy > 0 ? 5 : -5;
-          }
-        } else {
-          // chance aleatória de bocejar ou coçar
-          let r = Math.random();
-          if (r < 0.01) dir = "yawn";
-          else if (r < 0.02) dir = "scratch";
-          else dir = "idle";
-        }
-      }
-
-      // troca de frame
-      this.frameIndex = (this.frameIndex + 1) % this.frames[dir].length;
-      this.el.src = this.frames[dir][this.frameIndex];
-      this.el.style.left = this.x + "px";
-      this.el.style.top = this.y + "px";
+  // Função para validar JWT
+  function validateJWT(token, secret){
+    try{
+      const isValid = KJUR.jws.JWS.verifyJWT(token, {utf8: secret}, {alg: ["HS256"]});
+      if(!isValid) return {valid:false,error:"Assinatura inválida"};
+      const payloadObj = KJUR.jws.JWS.readSafeJSONString(b64utoutf8(token.split(".")[1]));
+      const now = Math.floor(Date.now()/1000);
+      if(payloadObj.exp && now > payloadObj.exp) return {valid:false,error:"Token expirado"};
+      return {valid:true,payload:payloadObj};
+    }catch(e){
+      return {valid:false,error:e.message};
     }
   }
 
-  window.onload = () => new BlueTapy();
-  </script>
+  // Eventos
+  document.getElementById('gen').onclick = () => {
+    const password = document.getElementById('pass').value;
+    const room = document.getElementById('room').value;
+    const cand = document.getElementById('cand').value;
+    if(password !== ADMIN_PASSWORD){
+      document.getElementById('result').textContent = "Erro: senha admin incorreta";
+      return;
+    }
+    if(!room){
+      document.getElementById('result').textContent = "Erro: roomId obrigatório";
+      return;
+    }
+    const token = generateJWT({room, candidate:cand||null}, JWT_SECRET, TOKEN_TTL_SECONDS);
+    document.getElementById('result').textContent = token;
+  };
 
+  document.getElementById('validate').onclick = () => {
+    const token = document.getElementById('tokenInput').value.trim();
+    const result = validateJWT(token, JWT_SECRET);
+    document.getElementById('validationResult').textContent = JSON.stringify(result,null,2);
+  };
+  </script>
 </body>
 </html>
