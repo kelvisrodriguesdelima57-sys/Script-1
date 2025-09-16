@@ -1,234 +1,71 @@
-<!doctype html>
-<html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Gerador de Token por ID da Prova (demo)</title>
-  <style>
-    body{font-family:Arial,Helvetica,sans-serif;margin:20px;max-width:900px}
-    input,select,textarea{width:100%;padding:8px;margin:6px 0;border:1px solid #ccc;border-radius:4px}
-    button{padding:10px 14px;margin:6px 0;cursor:pointer;border-radius:6px}
-    pre{background:#f7f7f7;padding:12px;border-radius:6px;white-space:pre-wrap;word-break:break-word}
-    .row{display:flex;gap:12px}
-    .col{flex:1}
-    label{font-weight:600}
-    small{color:#666}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Token - Prova Paulista</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #token-display {
+            margin-top: 30px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+            border: 2px dashed #ccc;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
-  <h1>Gerador de Token por ID da Prova — Demo</h1>
-  <p><strong>Atenção:</strong> protótipo local. Não guarde segredos aqui em produção.</p>
-
-  <section>
-    <h2>Configuração de demonstração</h2>
-    <p><small>Edite a lista de provas válidas abaixo (examId e nome) conforme desejar).</small></p>
-    <pre id="examListView">—</pre>
-    <button id="resetExams">Restaurar exemplos</button>
-  </section>
-
-  <hr/>
-
-  <section>
-    <h2>Gerar token (admin)</h2>
-    <label>Senha admin: <input id="pass" type="password" placeholder="senha admin"></label>
-    <div class="row">
-      <div class="col">
-        <label>Escolha a prova (examId):</label>
-        <select id="examSelect"></select>
-      </div>
-      <div class="col">
-        <label>Candidate ID (opcional):</label>
-        <input id="cand" placeholder="ex: CPF ou matrícula">
-      </div>
+    <div class="container">
+        <h1>Gerador de Token</h1>
+        <p>Clique no botão abaixo para gerar um token de acesso para a Prova Paulista.</p>
+        <button onclick="generateToken()">Gerar Token</button>
+        <div id="token-display"></div>
     </div>
-    <label>Metadados (JSON opcional): <input id="meta" placeholder='{"turma":"A","sala":5}'></label>
-    <button id="gen">Gerar token para a prova selecionada</button>
 
-    <h4>Token gerado</h4>
-    <pre id="result">—</pre>
-    <button id="copyToken">Copiar token</button>
-  </section>
-
-  <hr/>
-
-  <section>
-    <h2>Validar token (sala/prova)</h2>
-    <label>ExamId esperado pela sala: <input id="expectedExam" placeholder="digite o examId que a sala espera"></label>
-    <textarea id="tokenInput" rows="3" placeholder="cole o token aqui"></textarea>
-    <button id="validate">Validar token</button>
-    <pre id="validationResult">—</pre>
-  </section>
-
-  <hr/>
-
-  <section>
-    <h2>Revogação local (demo)</h2>
-    <p><small>Você pode revogar tokens localmente — apenas para demonstração (localStorage).</small></p>
-    <input id="revokeTokenInput" placeholder="cole jti ou token para revogar"/>
-    <div class="row">
-      <button id="revokeToken">Revogar (adicionar blacklist)</button>
-      <button id="showBlacklist">Mostrar blacklist</button>
-    </div>
-    <pre id="blacklistView">—</pre>
-  </section>
-
-  <!-- jsrsasign para JWT em cliente (apenas demo) -->
-  <script src="https://cdn.jsdelivr.net/npm/jsrsasign"></script>
-  <script>
-  /***** CONFIGURAÇÃO DE DEMO (ALTERE AQUI) *****/
-  const ADMIN_PASSWORD = "admin123";             // troque ao testar
-  const JWT_SECRET = "segredo_demo_super_forte"; // troque ao testar
-  const TOKEN_TTL_SECONDS = 900;                 // 15 minutos
-  /***********************************************/
-
-  // Lista de provas permitidas (exemplo). Cada item: {examId, name}
-  const DEFAULT_EXAMS = [
-    { examId: "PAU-2025-001", name: "Prova Paulista 2025 - Matutino" },
-    { examId: "PAU-2025-002", name: "Prova Paulista 2025 - Vespertino" },
-    { examId: "SIM-2025-EX", name: "Simulado Especial 2025" }
-  ];
-
-  // --- Helpers ---
-  function saveExams(list){ localStorage.setItem('demo_exams', JSON.stringify(list)); }
-  function loadExams(){ const s=localStorage.getItem('demo_exams'); return s?JSON.parse(s):DEFAULT_EXAMS.slice(); }
-  function saveBlacklist(list){ localStorage.setItem('demo_blacklist', JSON.stringify(list)); }
-  function loadBlacklist(){ const s=localStorage.getItem('demo_blacklist'); return s?JSON.parse(s):[]; }
-  function uuidv4(){ // simples jti
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random()*16|0, v = c=='x'? r : (r&0x3|0x8);
-      return v.toString(16);
-    });
-  }
-
-  // Render lista de provas no select
-  function renderExamSelect(){
-    const exams = loadExams();
-    const sel = document.getElementById('examSelect');
-    sel.innerHTML = '';
-    exams.forEach(e=>{
-      const opt = document.createElement('option');
-      opt.value = e.examId;
-      opt.textContent = `${e.examId} — ${e.name}`;
-      sel.appendChild(opt);
-    });
-    document.getElementById('examListView').textContent = JSON.stringify(exams, null, 2);
-  }
-
-  // JWT generation (HS256) usando jsrsasign
-  function generateJWT(payload, secret, ttlSec){
-    const header = { alg: "HS256", typ: "JWT" };
-    const now = Math.floor(Date.now()/1000);
-    const jti = uuidv4();
-    const fullPayload = Object.assign({}, payload, { iat: now, exp: now + ttlSec, jti });
-    const sHeader = JSON.stringify(header);
-    const sPayload = JSON.stringify(fullPayload);
-    const token = KJUR.jws.JWS.sign("HS256", sHeader, sPayload, { utf8: secret });
-    return { token, payload: fullPayload };
-  }
-
-  // Validate + check blacklist + examId matching
-  function validateJWT(token, secret, expectedExamId){
-    try{
-      // assinatura
-      const ok = KJUR.jws.JWS.verifyJWT(token, {utf8: secret}, {alg:["HS256"]});
-      if(!ok) return { valid:false, error: "Assinatura inválida" };
-
-      // payload
-      const payload = KJUR.jws.JWS.readSafeJSONString(b64utoutf8(token.split('.')[1]));
-      // exp
-      const now = Math.floor(Date.now()/1000);
-      if(payload.exp && now > payload.exp) return { valid:false, error: "Token expirado", payload };
-
-      // blacklist (revogação)
-      const blacklist = loadBlacklist();
-      if(payload.jti && blacklist.includes(payload.jti)) return { valid:false, error: "Token revogado (jti na blacklist)", payload };
-
-      // examId match
-      if(expectedExamId && payload.examId !== expectedExamId) {
-        return { valid:false, error: `examId não confere (esperado: ${expectedExamId}, token: ${payload.examId})`, payload };
-      }
-
-      return { valid:true, payload };
-    } catch(e){
-      return { valid:false, error: e.message };
-    }
-  }
-
-  // Inicialização UI
-  document.addEventListener('DOMContentLoaded', ()=>{
-    // restaurar exames se necessário
-    if(!localStorage.getItem('demo_exams')) saveExams(DEFAULT_EXAMS);
-    renderExamSelect();
-    document.getElementById('blacklistView').textContent = JSON.stringify(loadBlacklist(), null, 2);
-  });
-
-  // Restaurar exemplos
-  document.getElementById('resetExams').onclick = ()=>{
-    saveExams(DEFAULT_EXAMS.slice());
-    renderExamSelect();
-    alert('Exames restaurados para exemplos.');
-  };
-
-  // Gerar token
-  document.getElementById('gen').onclick = ()=>{
-    const pass = document.getElementById('pass').value;
-    if(pass !== ADMIN_PASSWORD){
-      document.getElementById('result').textContent = 'Erro: senha admin incorreta';
-      return;
-    }
-    const examId = document.getElementById('examSelect').value;
-    if(!examId){ document.getElementById('result').textContent = 'Erro: escolha um examId'; return; }
-
-    const cand = document.getElementById('cand').value || null;
-    let meta = null;
-    const metaText = document.getElementById('meta').value.trim();
-    if(metaText){
-      try{ meta = JSON.parse(metaText); } catch(e){ document.getElementById('result').textContent = 'Erro: metadados JSON inválido'; return; }
-    }
-
-    const payload = { examId, candidate: cand, meta };
-    const { token, payload: usedPayload } = generateJWT(payload, JWT_SECRET, TOKEN_TTL_SECONDS);
-    document.getElementById('result').textContent = token + "\n\nPayload:\n" + JSON.stringify(usedPayload, null, 2);
-  };
-
-  // Copiar token
-  document.getElementById('copyToken').onclick = async ()=>{
-    const txt = document.getElementById('result').textContent.split('\n\nPayload:')[0];
-    try{ await navigator.clipboard.writeText(txt); alert('Token copiado.'); } catch(e){ alert('Não foi possível copiar: ' + e.message); }
-  };
-
-  // Validar token
-  document.getElementById('validate').onclick = ()=>{
-    const expected = document.getElementById('expectedExam').value.trim() || null;
-    const token = document.getElementById('tokenInput').value.trim();
-    if(!token){ document.getElementById('validationResult').textContent = 'Erro: cole o token'; return; }
-    const res = validateJWT(token, JWT_SECRET, expected);
-    document.getElementById('validationResult').textContent = JSON.stringify(res, null, 2);
-  };
-
-  // Revogar (adicionar jti)
-  document.getElementById('revokeToken').onclick = ()=>{
-    const text = document.getElementById('revokeTokenInput').value.trim();
-    if(!text){ alert('Cole jti ou token para revogar'); return; }
-    let jti = text;
-    // se o usuário colou o token, extrair jti do payload
-    if(text.split && text.split('.').length === 3){
-      try{
-        const payload = KJUR.jws.JWS.readSafeJSONString(b64utoutf8(text.split('.')[1]));
-        jti = payload.jti;
-        if(!jti){ alert('Token não tem jti'); return; }
-      }catch(e){ alert('Token inválido: ' + e.message); return; }
-    }
-    const bl = loadBlacklist();
-    if(!bl.includes(jti)) bl.push(jti);
-    saveBlacklist(bl);
-    document.getElementById('blacklistView').textContent = JSON.stringify(bl, null, 2);
-    alert('Revogado (jti adicionado à blacklist).');
-  };
-
-  document.getElementById('showBlacklist').onclick = ()=>{
-    document.getElementById('blacklistView').textContent = JSON.stringify(loadBlacklist(), null, 2);
-  };
-  </script>
+    <script>
+        function generateToken() {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let token = '';
+            for (let i = 0; i < 6; i++) {
+                token += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            document.getElementById('token-display').innerText = token;
+        }
+    </script>
 </body>
 </html>
