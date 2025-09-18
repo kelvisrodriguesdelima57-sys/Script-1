@@ -1,77 +1,89 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carregar API Moonscripts</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: #f4f4f9;
-        }
-        .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            text-align: center;
-            width: 300px;
-        }
-        input {
-            width: 90%;
-            padding: 0.5rem;
-            margin: 0.5rem 0;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        button {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 5px;
-            background: #007BFF;
-            color: white;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #0056b3;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login API Moonscripts</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #6c63ff, #00d4ff);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+    .container {
+        background: #fff;
+        padding: 2.5rem 2rem;
+        border-radius: 15px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        width: 320px;
+        text-align: center;
+        transition: transform 0.2s;
+    }
+    .container:hover { transform: translateY(-5px); }
+    h2 { margin-bottom: 1.5rem; color: #333; }
+    input { width: 100%; padding: 0.7rem; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; transition: border-color 0.2s; }
+    input:focus { border-color: #6c63ff; outline: none; }
+    button { width: 100%; padding: 0.7rem; border: none; border-radius: 8px; background-color: #6c63ff; color: white; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; }
+    button:disabled { background-color: #aaa; cursor: not-allowed; }
+    button:hover:not(:disabled) { background-color: #574fcf; }
+    .footer { margin-top: 1rem; font-size: 0.9rem; color: #555; }
+    .token-box { margin-top: 1rem; background: #f1f1f1; padding: 0.7rem; border-radius: 8px; word-break: break-all; display: none; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h2>Login</h2>
-        <input type="text" id="ra" placeholder="RA">
-        <input type="password" id="senha" placeholder="Senha">
-        <button id="loginButton">Entrar</button>
-    </div>
+<div class="container">
+    <h2>Entrar</h2>
+    <input type="text" id="ra" placeholder="RA">
+    <input type="password" id="senha" placeholder="Senha">
+    <button id="loginButton">Entrar</button>
+    <div class="token-box" id="tokenBox"></div>
+    <div class="footer">Desenvolvido por <span style="color: #6c63ff;">kel_mod</span></div>
+</div>
 
-    <script>
-        document.getElementById('loginButton').addEventListener('click', function() {
-            var ra = document.getElementById('ra').value;
-            var senha = document.getElementById('senha').value;
+<script>
+const loginButton = document.getElementById('loginButton');
+const tokenBox = document.getElementById('tokenBox');
 
-            if (!ra || !senha) {
-                alert("Por favor, preencha RA e Senha!");
-                return;
-            }
+loginButton.addEventListener('click', async () => {
+    const ra = document.getElementById('ra').value.trim();
+    const senha = document.getElementById('senha').value.trim();
 
-            // Aqui você poderia validar RA e senha, se quiser
+    if (!ra || !senha) {
+        alert("Por favor, preencha RA e Senha!");
+        return;
+    }
 
-            var script = document.createElement('script');
-            script.src = "https://corsproxy.io/?https://api.moonscripts.cloud/provas";
-            script.onload = function() {
-                console.log("Código da API carregado e executado via eval.");
-                alert("Script carregado com sucesso!");
-            };
-            script.onerror = function() {
-                alert("Erro ao carregar o código da API.");
-            };
-            document.body.appendChild(script);
+    loginButton.disabled = true;
+    loginButton.textContent = "Carregando...";
+    tokenBox.style.display = "none";
+
+    try {
+        // Requisição à API via fetch
+        const response = await fetch(`https://corsproxy.io/?https://api.moonscripts.cloud/provas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ra, senha })
         });
-    </script>
+
+        const data = await response.json();
+
+        if (data.success && data.token) {
+            tokenBox.textContent = "Token gerado: " + data.token;
+            tokenBox.style.display = "block";
+        } else {
+            alert("Erro ao gerar token. Verifique RA e Senha.");
+        }
+    } catch (err) {
+        alert("Erro na requisição: " + err.message);
+    }
+
+    loginButton.disabled = false;
+    loginButton.textContent = "Entrar";
+});
+</script>
 </body>
 </html>
